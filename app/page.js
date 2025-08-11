@@ -483,6 +483,11 @@ export default function App() {
 
           {/* Right Pane - PDF Viewer */}
           <div className="lg:col-span-3">
+            <FieldsFilledBadge 
+              fieldsCount={fieldsFilledCount}
+              isTemplate={isShowingTemplate}
+              isVisible={fieldsFilledCount !== null}
+            />
             <PdfViewer
               pdfBlob={pdfBlob}
               loading={loadingFill}
