@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import InstructionInput from '../components/InstructionInput';
 import ParsedFieldsCard from '../components/ParsedFieldsCard';
 import ActionsBar from '../components/ActionsBar';
 import PdfViewer from '../components/PdfViewer';
+import AutoFillToggle from '../components/AutoFillToggle';
 
 export default function App() {
   // State management
@@ -17,15 +18,135 @@ export default function App() {
     date: '',
     confidence: 0.0
   });
+  const [previousParsedFields, setPreviousParsedFields] = useState({
+    address: '',
+    buyer: '',
+    seller: '',
+    date: '',
+    confidence: 0.0
+  });
   const [pdfBlob, setPdfBlob] = useState(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
   const [loadingFill, setLoadingFill] = useState(false);
+  const [autoFillEnabled, setAutoFillEnabled] = useState(false);
+  
+  // Race condition prevention
+  const currentFillRequestRef = useRef(null);
+  const autoFillTimeoutRef = useRef(null);
+
+  // Helper function to compare parsed fields (ignoring confidence)
+  const fieldsHaveChanged = useCallback((newFields, oldFields) => {
+    const fieldsToCompare = ['address', 'buyer', 'seller', 'date'];
+    return fieldsToCompare.some(field => newFields[field] !== oldFields[field]);
+  }, []);
+
+  // Auto-fill PDF with race condition prevention
+  const performAutoFill = useCallback(async (fields) => {
+    // Clear any existing timeout
+    if (autoFillTimeoutRef.current) {
+      clearTimeout(autoFillTimeoutRef.current);
+      autoFillTimeoutRef.current = null;
+    }
+
+    // Create a new abort controller for this request
+    const abortController = new AbortController();
+    currentFillRequestRef.current = abortController;
+
+    // Check if we have any field data
+    const hasData = Object.entries(fields).some(([key, value]) => 
+      key !== 'confidence' && value && value.trim()
+    );
+
+    if (!hasData) {
+      console.log('Auto-fill skipped: No field data available');
+      return;
+    }
+
+    try {
+      setLoadingFill(true);
+      console.log('Auto-filling PDF with fields:', fields);
+
+      const response = await fetch('/api/fill-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          data: {
+            address: fields.address || '',
+            buyer: fields.buyer || '',
+            seller: fields.seller || '',
+            date: fields.date || ''
+          }
+        }),
+        signal: abortController.signal // Attach abort signal
+      });
+
+      // Check if this request was aborted
+      if (abortController.signal.aborted) {
+        console.log('Auto-fill request was aborted (stale request)');
+        return;
+      }
+
+      // Check if this is still the current request
+      if (currentFillRequestRef.current !== abortController) {
+        console.log('Auto-fill request is stale, ignoring response');
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to auto-fill PDF');
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      setPdfBlob(blob);
+      
+      const fieldsCount = response.headers.get('x-fields-filled');
+      toast.success(`PDF auto-filled! ${fieldsCount} fields populated.`);
+      
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Auto-fill request was aborted');
+        return;
+      }
+      
+      console.error('Auto-fill error:', error);
+      toast.error(`Auto-fill failed: ${error.message}`);
+    } finally {
+      // Only clear loading if this is still the current request
+      if (currentFillRequestRef.current === abortController) {
+        setLoadingFill(false);
+        currentFillRequestRef.current = null;
+      }
+    }
+  }, []);
+
+  // Debounced auto-fill function
+  const debouncedAutoFill = useCallback((fields) => {
+    // Clear any existing timeout
+    if (autoFillTimeoutRef.current) {
+      clearTimeout(autoFillTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced auto-fill
+    autoFillTimeoutRef.current = setTimeout(() => {
+      performAutoFill(fields);
+    }, 550); // 550ms debounce
+  }, [performAutoFill]);
 
   // Extract fields from natural language text
   const handleExtract = useCallback(async (text) => {
     if (!text.trim()) {
       toast.error('Please enter some text to extract fields from');
       return;
+    }
+
+    // Abort any ongoing auto-fill requests
+    if (currentFillRequestRef.current) {
+      currentFillRequestRef.current.abort();
+      currentFillRequestRef.current = null;
     }
 
     setLoadingExtract(true);
@@ -44,8 +165,18 @@ export default function App() {
       }
 
       const result = await response.json();
+      
+      // Store previous fields for comparison
+      setPreviousParsedFields(parsedFields);
       setParsedFields(result);
+      
       toast.success(`Fields extracted with ${Math.round(result.confidence * 100)}% confidence`);
+      
+      // Auto-fill if enabled and fields have changed
+      if (autoFillEnabled && fieldsHaveChanged(result, parsedFields)) {
+        console.log('Fields changed, triggering auto-fill...');
+        debouncedAutoFill(result);
+      }
       
     } catch (error) {
       console.error('Extract error:', error);
@@ -53,10 +184,16 @@ export default function App() {
     } finally {
       setLoadingExtract(false);
     }
-  }, []);
+  }, [autoFillEnabled, parsedFields, fieldsHaveChanged, debouncedAutoFill]);
 
-  // Fill PDF with current field values
+  // Manual fill PDF (existing functionality)
   const handleFillPdf = useCallback(async () => {
+    // Abort any ongoing auto-fill requests
+    if (currentFillRequestRef.current) {
+      currentFillRequestRef.current.abort();
+      currentFillRequestRef.current = null;
+    }
+
     // Check if we have any field data
     const hasData = Object.entries(parsedFields).some(([key, value]) => 
       key !== 'confidence' && value && value.trim()
@@ -113,7 +250,7 @@ export default function App() {
     }
   }, [parsedFields]);
 
-  // Download the current PDF
+  // Download the current PDF (unchanged)
   const handleDownloadPdf = useCallback(() => {
     if (!pdfBlob) {
       toast.error('No PDF available to download. Please fill the PDF first.');
@@ -137,26 +274,62 @@ export default function App() {
     }
   }, [pdfBlob]);
 
-  // Reset all data
+  // Reset all data (unchanged)
   const handleReset = useCallback(() => {
+    // Abort any ongoing auto-fill requests
+    if (currentFillRequestRef.current) {
+      currentFillRequestRef.current.abort();
+      currentFillRequestRef.current = null;
+    }
+
+    // Clear any pending auto-fill timeouts
+    if (autoFillTimeoutRef.current) {
+      clearTimeout(autoFillTimeoutRef.current);
+      autoFillTimeoutRef.current = null;
+    }
+
     setInstructionText('');
-    setParsedFields({
+    const emptyFields = {
       address: '',
       buyer: '',
       seller: '',
       date: '',
       confidence: 0.0
-    });
+    };
+    setParsedFields(emptyFields);
+    setPreviousParsedFields(emptyFields);
     setPdfBlob(null);
     toast.info('Reset complete');
   }, []);
 
-  // Update individual parsed fields
+  // Update individual parsed fields (unchanged)
   const updateParsedField = useCallback((fieldName, value) => {
-    setParsedFields(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
+    setParsedFields(prev => {
+      const updated = {
+        ...prev,
+        [fieldName]: value
+      };
+      
+      // Trigger auto-fill if enabled and we're not currently loading
+      if (autoFillEnabled && !loadingExtract && !loadingFill && fieldsHaveChanged(updated, prev)) {
+        console.log('Field manually updated, triggering auto-fill...');
+        debouncedAutoFill(updated);
+      }
+      
+      return updated;
+    });
+  }, [autoFillEnabled, loadingExtract, loadingFill, fieldsHaveChanged, debouncedAutoFill]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (currentFillRequestRef.current) {
+        currentFillRequestRef.current.abort();
+      }
+      if (autoFillTimeoutRef.current) {
+        clearTimeout(autoFillTimeoutRef.current);
+      }
+    };
   }, []);
 
   return (
