@@ -7,16 +7,27 @@ import { FileText, Loader2, AlertCircle } from 'lucide-react';
 export default function PdfViewer({ pdfBlob, loading }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [error, setError] = useState(null);
+  const [isTemplate, setIsTemplate] = useState(false);
 
-  // Create object URL from blob
+  // Create object URL from blob with proper cleanup
   useEffect(() => {
     if (pdfBlob) {
       try {
-        const url = window.URL.createObjectURL(pdfBlob);
-        setPdfUrl(url);
-        setError(null);
-        
         // Cleanup previous URL
+        if (pdfUrl) {
+          window.URL.revokeObjectURL(pdfUrl);
+        }
+        
+        // Create new URL with cache-busting query
+        const url = window.URL.createObjectURL(pdfBlob);
+        const cacheBustedUrl = `${url}?t=${Date.now()}`;
+        setPdfUrl(cacheBustedUrl);
+        setError(null);
+        setIsTemplate(false);
+        
+        console.log('PDF blob loaded, size:', pdfBlob.size, 'bytes');
+        
+        // Cleanup function
         return () => {
           window.URL.revokeObjectURL(url);
         };
@@ -25,10 +36,63 @@ export default function PdfViewer({ pdfBlob, loading }) {
         setError('Failed to load PDF');
       }
     } else {
+      // Clear URL when no blob
+      if (pdfUrl) {
+        window.URL.revokeObjectURL(pdfUrl.split('?')[0]); // Remove cache-busting query before revoking
+      }
       setPdfUrl(null);
       setError(null);
+      setIsTemplate(false);
     }
   }, [pdfBlob]);
+
+  // Load template PDF from API
+  const loadTemplatePDF = useCallback(async () => {
+    try {
+      console.log('Loading template PDF from /api/pdf');
+      setError(null);
+      
+      const response = await fetch('/api/pdf', {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load template PDF: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      
+      // Cleanup previous URL
+      if (pdfUrl) {
+        window.URL.revokeObjectURL(pdfUrl.split('?')[0]);
+      }
+      
+      // Create new URL with cache-busting
+      const url = window.URL.createObjectURL(blob);
+      const cacheBustedUrl = `${url}?t=${Date.now()}`;
+      setPdfUrl(cacheBustedUrl);
+      setIsTemplate(true);
+      
+      const pdfSize = response.headers.get('x-pdf-size') || blob.size;
+      console.log(`Template PDF loaded: ${pdfSize} bytes`);
+      
+      return blob;
+    } catch (err) {
+      console.error('Error loading template PDF:', err);
+      setError('Failed to load template PDF');
+      return null;
+    }
+  }, [pdfUrl]);
+
+  // Expose loadTemplatePDF to parent component
+  useEffect(() => {
+    if (window) {
+      window.loadTemplatePDF = loadTemplatePDF;
+    }
+  }, [loadTemplatePDF]);
 
   return (
     <div className="glass-card rounded-2xl shadow-lg h-[600px] lg:h-[700px] overflow-hidden">
