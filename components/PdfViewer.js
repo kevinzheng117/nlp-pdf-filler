@@ -87,12 +87,12 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
     }
   }, [pdfUrl]);
 
-  // Expose loadTemplatePDF to parent component
+  // Expose loadTemplatePDF to parent component via callback
   useEffect(() => {
-    if (window) {
-      window.loadTemplatePDF = loadTemplatePDF;
+    if (onLoadTemplate && typeof onLoadTemplate === 'function') {
+      onLoadTemplate(loadTemplatePDF);
     }
-  }, [loadTemplatePDF]);
+  }, [loadTemplatePDF, onLoadTemplate]);
 
   return (
     <div className="glass-card rounded-2xl shadow-lg h-[600px] lg:h-[700px] overflow-hidden">
