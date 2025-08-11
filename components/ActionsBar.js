@@ -2,12 +2,13 @@
 
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { FileDown, FileText, RotateCcw, Loader2 } from 'lucide-react';
+import { FileDown, FileText, RotateCcw, Loader2, FileX } from 'lucide-react';
 
 export default function ActionsBar({ 
   onFillPdf, 
   onDownloadPdf, 
-  onReset, 
+  onReset,
+  onResetToTemplate, 
   loadingFill, 
   hasFields, 
   hasPdf 
