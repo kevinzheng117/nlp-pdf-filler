@@ -30,6 +30,8 @@ export default function App() {
   const [loadingExtract, setLoadingExtract] = useState(false);
   const [loadingFill, setLoadingFill] = useState(false);
   const [autoFillEnabled, setAutoFillEnabled] = useState(false);
+  const [fieldsFilledCount, setFieldsFilledCount] = useState(null);
+  const [isShowingTemplate, setIsShowingTemplate] = useState(true);
   
   // Race condition prevention
   const currentFillRequestRef = useRef(null);
