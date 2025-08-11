@@ -345,6 +345,8 @@ export default function App() {
     setParsedFields(emptyFields);
     setPreviousParsedFields(emptyFields);
     setPdfBlob(null);
+    setFieldsFilledCount(null);
+    setIsShowingTemplate(true);
     toast.info('Reset complete');
   }, []);
 
