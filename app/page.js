@@ -273,9 +273,20 @@ export default function App() {
       // Get the PDF blob
       const blob = await response.blob();
       setPdfBlob(blob);
+      setIsShowingTemplate(false);
       
-      const fieldsCount = response.headers.get('x-fields-filled');
-      toast.success(`PDF filled successfully! ${fieldsCount} fields populated.`);
+      // Track fields filled count from API response header or compute from data
+      const fieldData = {
+        address: parsedFields.address || '',
+        buyer: parsedFields.buyer || '',
+        seller: parsedFields.seller || '',
+        date: parsedFields.date || ''
+      };
+      const fieldsCount = parseInt(response.headers.get('x-fields-filled')) || countFilledFields(fieldData);
+      setFieldsFilledCount(fieldsCount);
+      
+      const fieldsCountText = response.headers.get('x-fields-filled') || fieldsCount;
+      toast.success(`PDF filled successfully! ${fieldsCountText} fields populated.`);
       
     } catch (error) {
       console.error('Fill PDF error:', error);
