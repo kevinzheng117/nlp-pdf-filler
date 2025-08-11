@@ -33,6 +33,21 @@ export default function App() {
   // Race condition prevention
   const currentFillRequestRef = useRef(null);
   const autoFillTimeoutRef = useRef(null);
+  const loadTemplateFunctionRef = useRef(null);
+
+  // Load template PDF on initial mount (if no filled PDF exists)
+  useEffect(() => {
+    const loadInitialTemplate = async () => {
+      if (!pdfBlob && loadTemplateFunctionRef.current) {
+        console.log('Loading template PDF on initial mount...');
+        await loadTemplateFunctionRef.current();
+      }
+    };
+    
+    // Small delay to ensure PdfViewer has set up the callback
+    const timer = setTimeout(loadInitialTemplate, 100);
+    return () => clearTimeout(timer);
+  }, [pdfBlob]); // Depend on pdfBlob to avoid reloading when filled PDF exists
 
   // Helper function to compare parsed fields (ignoring confidence)
   const fieldsHaveChanged = useCallback((newFields, oldFields) => {
