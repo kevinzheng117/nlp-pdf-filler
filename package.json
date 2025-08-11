@@ -63,7 +63,9 @@
         "vaul": "^1.1.2",
         "zod": "^3.25.67",
         "pdf-lib": "^1.17.1",
-        "pdf2pic": "^2.1.4"
+        "pdf2pic": "^2.1.4",
+        "chrono-node": "^2.7.7",
+        "emergentintegrations": "latest"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.19",
