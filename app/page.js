@@ -317,6 +317,52 @@ export default function App() {
     toast.info('Reset complete');
   }, []);
 
+  // Reset to template handler
+  const handleResetToTemplate = useCallback(async () => {
+    // Abort any ongoing auto-fill requests
+    if (currentFillRequestRef.current) {
+      currentFillRequestRef.current.abort();
+      currentFillRequestRef.current = null;
+    }
+
+    // Clear any pending auto-fill timeouts
+    if (autoFillTimeoutRef.current) {
+      clearTimeout(autoFillTimeoutRef.current);
+      autoFillTimeoutRef.current = null;
+    }
+
+    // Clear form data
+    setInstructionText('');
+    const emptyFields = {
+      address: '',
+      buyer: '',
+      seller: '',
+      date: '',
+      confidence: 0.0
+    };
+    setParsedFields(emptyFields);
+    setPreviousParsedFields(emptyFields);
+    setPdfBlob(null); // Clear filled PDF
+
+    // Load template PDF
+    if (loadTemplateFunctionRef.current) {
+      try {
+        await loadTemplateFunctionRef.current();
+        toast.success('Reset to template complete');
+      } catch (error) {
+        console.error('Failed to load template:', error);
+        toast.error('Failed to load template PDF');
+      }
+    } else {
+      toast.warning('Template loading not available');
+    }
+  }, []);
+
+  // Callback to receive template loading function from PdfViewer
+  const handleLoadTemplateCallback = useCallback((loadTemplateFunction) => {
+    loadTemplateFunctionRef.current = loadTemplateFunction;
+  }, []);
+
   // Update individual parsed fields (unchanged)
   const updateParsedField = useCallback((fieldName, value) => {
     setParsedFields(prev => {
