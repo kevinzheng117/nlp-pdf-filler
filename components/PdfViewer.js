@@ -100,7 +100,15 @@ export default function PdfViewer({ pdfBlob, loading }) {
         <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
           <FileText className="h-4 w-4 text-white" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-800">PDF Preview</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-gray-800">PDF Preview</h2>
+          {isTemplate && (
+            <p className="text-sm text-green-600 font-medium">Template • Ready to fill</p>
+          )}
+          {pdfUrl && !isTemplate && (
+            <p className="text-sm text-blue-600 font-medium">Filled • Ready to download</p>
+          )}
+        </div>
       </div>
       
       <div className="h-[calc(100%-88px)]">
