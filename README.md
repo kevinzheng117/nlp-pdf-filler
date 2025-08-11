@@ -62,7 +62,6 @@ Complete PDF with all fields populated and ready for download.
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
-- MongoDB (for session storage)
 
 ### Quick Start
 
@@ -86,25 +85,20 @@ Complete PDF with all fields populated and ready for download.
    
    Update `.env` with your configuration:
    ```env
-   MONGO_URL=mongodb://localhost:27017
-   DB_NAME=pdf_form_filler
    NEXT_PUBLIC_BASE_URL=http://localhost:3000
-   EMERGENT_LLM_KEY=your_llm_key_here
+   CORS_ORIGINS=*
+   # Optional: Leave blank for rules-first extraction only
+   EMERGENT_LLM_KEY=your_llm_key_here_or_leave_blank
    ```
 
-4. **Place your PDF template**
-   - Copy your PDF template to the root directory
-   - Rename it to `VM_Takehome_Document.pdf`
-   - Ensure it has AcroForm fields named: `propertyAddress`, `buyer`, `seller`, `date`
-
-5. **Start the development server**
+4. **Start the development server**
    ```bash
    yarn dev
    # or
    npm run dev
    ```
 
-6. **Open in browser**
+5. **Open in browser**
    Navigate to `http://localhost:3000`
 
 ### Production Build
@@ -113,6 +107,15 @@ yarn build && yarn start
 # or
 npm run build && npm start
 ```
+
+## 🤖 AI Integration (Optional)
+
+**The application works perfectly with rules-first extraction only.** LLM integration is optional and can be enabled by setting the `EMERGENT_LLM_KEY` environment variable.
+
+- **Rules-First Only**: Leave `EMERGENT_LLM_KEY` blank or unset
+- **With LLM Fallback**: Set `EMERGENT_LLM_KEY=sk-emergent-your-key-here`
+
+The extraction system uses intelligent regex patterns for high accuracy and only falls back to LLM when patterns fail to extract complete information.
 
 ## 📡 API Routes
 
