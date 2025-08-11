@@ -1,30 +1,34 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { toast } from 'sonner';
-import InstructionInput from '../components/InstructionInput';
-import ParsedFieldsCard from '../components/ParsedFieldsCard';
-import ActionsBar from '../components/ActionsBar';
-import PdfViewer from '../components/PdfViewer';
-import AutoFillToggle from '../components/AutoFillToggle';
-import FieldsFilledBadge from '../components/FieldsFilledBadge';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { toast } from "sonner";
+import InstructionInput from "../components/InstructionInput";
+import ParsedFieldsCard from "../components/ParsedFieldsCard";
+import ActionsBar from "../components/ActionsBar";
+import PdfViewer from "../components/PdfViewer";
+import AutoFillToggle from "../components/AutoFillToggle";
+import FieldsFilledBadge from "../components/FieldsFilledBadge";
+import ExtractionWarningBanner from "../components/ExtractionWarningBanner";
+import HistoryList from "../components/HistoryList";
+import { getExtractionHealth } from "../lib/utils";
+import { loadHistory, addHistory, clearHistory } from "../lib/history";
 
 export default function App() {
   // State management
-  const [instructionText, setInstructionText] = useState('');
+  const [instructionText, setInstructionText] = useState("");
   const [parsedFields, setParsedFields] = useState({
-    address: '',
-    buyer: '',
-    seller: '',
-    date: '',
-    confidence: 0.0
+    address: "",
+    buyer: "",
+    seller: "",
+    date: "",
+    confidence: 0.0,
   });
   const [previousParsedFields, setPreviousParsedFields] = useState({
-    address: '',
-    buyer: '',
-    seller: '',
-    date: '',
-    confidence: 0.0
+    address: "",
+    buyer: "",
+    seller: "",
+    date: "",
+    confidence: 0.0,
   });
   const [pdfBlob, setPdfBlob] = useState(null);
   const [loadingExtract, setLoadingExtract] = useState(false);
@@ -32,36 +36,31 @@ export default function App() {
   const [autoFillEnabled, setAutoFillEnabled] = useState(false);
   const [fieldsFilledCount, setFieldsFilledCount] = useState(null);
   const [isShowingTemplate, setIsShowingTemplate] = useState(true);
-  
+  const [history, setHistory] = useState([]);
+
   // Race condition prevention
   const currentFillRequestRef = useRef(null);
   const autoFillTimeoutRef = useRef(null);
-  const loadTemplateFunctionRef = useRef(null);
 
   // Helper function to count non-empty fields
   const countFilledFields = useCallback((data) => {
-    const fields = ['address', 'buyer', 'seller', 'date'];
-    return fields.filter(field => data[field] && data[field].trim()).length;
+    const fields = ["address", "buyer", "seller", "date"];
+    return fields.filter((field) => data[field] && data[field].trim()).length;
   }, []);
 
-  // Load template PDF on initial mount (if no filled PDF exists)
+  // Template loading is now handled automatically by PdfViewer component
+
+  // Load history on mount
   useEffect(() => {
-    const loadInitialTemplate = async () => {
-      if (!pdfBlob && loadTemplateFunctionRef.current) {
-        console.log('Loading template PDF on initial mount...');
-        await loadTemplateFunctionRef.current();
-      }
-    };
-    
-    // Small delay to ensure PdfViewer has set up the callback
-    const timer = setTimeout(loadInitialTemplate, 100);
-    return () => clearTimeout(timer);
-  }, [pdfBlob]); // Depend on pdfBlob to avoid reloading when filled PDF exists
+    setHistory(loadHistory());
+  }, []);
 
   // Helper function to compare parsed fields (ignoring confidence)
   const fieldsHaveChanged = useCallback((newFields, oldFields) => {
-    const fieldsToCompare = ['address', 'buyer', 'seller', 'date'];
-    return fieldsToCompare.some(field => newFields[field] !== oldFields[field]);
+    const fieldsToCompare = ["address", "buyer", "seller", "date"];
+    return fieldsToCompare.some(
+      (field) => newFields[field] !== oldFields[field]
+    );
   }, []);
 
   // Auto-fill PDF with race condition prevention
@@ -77,77 +76,82 @@ export default function App() {
     currentFillRequestRef.current = abortController;
 
     // Check if we have any field data
-    const hasData = Object.entries(fields).some(([key, value]) => 
-      key !== 'confidence' && value && value.trim()
+    const hasData = Object.entries(fields).some(
+      ([key, value]) => key !== "confidence" && value && value.trim()
     );
 
     if (!hasData) {
-      console.log('Auto-fill skipped: No field data available');
+      console.log("Auto-fill skipped: No field data available");
       return;
     }
 
     try {
       setLoadingFill(true);
-      console.log('Auto-filling PDF with fields:', fields);
+      console.log("Auto-filling PDF with fields:", fields);
 
-      const response = await fetch('/api/fill-pdf', {
-        method: 'POST',
+      const response = await fetch("/api/fill-pdf", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           data: {
-            address: fields.address || '',
-            buyer: fields.buyer || '',
-            seller: fields.seller || '',
-            date: fields.date || ''
-          }
+            address: fields.address || "",
+            buyer: fields.buyer || "",
+            seller: fields.seller || "",
+            date: fields.date || "",
+          },
         }),
-        signal: abortController.signal // Attach abort signal
+        signal: abortController.signal, // Attach abort signal
       });
 
       // Check if this request was aborted
       if (abortController.signal.aborted) {
-        console.log('Auto-fill request was aborted (stale request)');
+        console.log("Auto-fill request was aborted (stale request)");
         return;
       }
 
       // Check if this is still the current request
       if (currentFillRequestRef.current !== abortController) {
-        console.log('Auto-fill request is stale, ignoring response');
+        console.log("Auto-fill request is stale, ignoring response");
         return;
       }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to auto-fill PDF');
+        throw new Error(errorData.error || "Failed to auto-fill PDF");
       }
 
       // Get the PDF blob
       const blob = await response.blob();
-      setPdfBlob(blob);
+
+      // Ensure the blob has the correct MIME type
+      const pdfBlob = new Blob([blob], { type: "application/pdf" });
+
+      setPdfBlob(pdfBlob);
       setIsShowingTemplate(false);
-      
+
       // Track fields filled count from API response header or compute from data
-      const fieldsCount = parseInt(response.headers.get('x-fields-filled')) || 
-                         countFilledFields({
-                           address: fields.address || '',
-                           buyer: fields.buyer || '',
-                           seller: fields.seller || '',
-                           date: fields.date || ''
-                         });
+      const fieldsCount =
+        parseInt(response.headers.get("x-fields-filled")) ||
+        countFilledFields({
+          address: fields.address || "",
+          buyer: fields.buyer || "",
+          seller: fields.seller || "",
+          date: fields.date || "",
+        });
       setFieldsFilledCount(fieldsCount);
-      
-      const fieldsCountText = response.headers.get('x-fields-filled') || fieldsCount;
+
+      const fieldsCountText =
+        response.headers.get("x-fields-filled") || fieldsCount;
       toast.success(`PDF auto-filled! ${fieldsCountText} fields populated.`);
-      
     } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Auto-fill request was aborted');
+      if (error.name === "AbortError") {
+        console.log("Auto-fill request was aborted");
         return;
       }
-      
-      console.error('Auto-fill error:', error);
+
+      console.error("Auto-fill error:", error);
       toast.error(`Auto-fill failed: ${error.message}`);
     } finally {
       // Only clear loading if this is still the current request
@@ -159,67 +163,80 @@ export default function App() {
   }, []);
 
   // Debounced auto-fill function
-  const debouncedAutoFill = useCallback((fields) => {
-    // Clear any existing timeout
-    if (autoFillTimeoutRef.current) {
-      clearTimeout(autoFillTimeoutRef.current);
-    }
+  const debouncedAutoFill = useCallback(
+    (fields) => {
+      // Clear any existing timeout
+      if (autoFillTimeoutRef.current) {
+        clearTimeout(autoFillTimeoutRef.current);
+      }
 
-    // Set new timeout for debounced auto-fill
-    autoFillTimeoutRef.current = setTimeout(() => {
-      performAutoFill(fields);
-    }, 550); // 550ms debounce
-  }, [performAutoFill]);
+      // Set new timeout for debounced auto-fill
+      autoFillTimeoutRef.current = setTimeout(() => {
+        performAutoFill(fields);
+      }, 550); // 550ms debounce
+    },
+    [performAutoFill]
+  );
 
   // Extract fields from natural language text
-  const handleExtract = useCallback(async (text) => {
-    if (!text.trim()) {
-      toast.error('Please enter some text to extract fields from');
-      return;
-    }
-
-    // Abort any ongoing auto-fill requests
-    if (currentFillRequestRef.current) {
-      currentFillRequestRef.current.abort();
-      currentFillRequestRef.current = null;
-    }
-
-    setLoadingExtract(true);
-    try {
-      const response = await fetch('/api/extract', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: text.trim() })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to extract fields');
+  const handleExtract = useCallback(
+    async (text) => {
+      if (!text.trim()) {
+        toast.error("Please enter some text to extract fields from");
+        return;
       }
 
-      const result = await response.json();
-      
-      // Store previous fields for comparison
-      setPreviousParsedFields(parsedFields);
-      setParsedFields(result);
-      
-      toast.success(`Fields extracted with ${Math.round(result.confidence * 100)}% confidence`);
-      
-      // Auto-fill if enabled and fields have changed
-      if (autoFillEnabled && fieldsHaveChanged(result, parsedFields)) {
-        console.log('Fields changed, triggering auto-fill...');
-        debouncedAutoFill(result);
+      // Abort any ongoing auto-fill requests
+      if (currentFillRequestRef.current) {
+        currentFillRequestRef.current.abort();
+        currentFillRequestRef.current = null;
       }
-      
-    } catch (error) {
-      console.error('Extract error:', error);
-      toast.error(`Extraction failed: ${error.message}`);
-    } finally {
-      setLoadingExtract(false);
-    }
-  }, [autoFillEnabled, parsedFields, fieldsHaveChanged, debouncedAutoFill]);
+
+      setLoadingExtract(true);
+      try {
+        const response = await fetch("/api/extract", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: text.trim() }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to extract fields");
+        }
+
+        const result = await response.json();
+
+        // Store previous fields for comparison
+        setPreviousParsedFields(parsedFields);
+        setParsedFields(result);
+
+        // Add to history on successful extraction
+        const updatedHistory = addHistory(text.trim());
+        setHistory(updatedHistory);
+
+        toast.success(
+          `Fields extracted with ${Math.round(
+            result.confidence * 100
+          )}% confidence`
+        );
+
+        // Auto-fill if enabled and fields have changed
+        if (autoFillEnabled && fieldsHaveChanged(result, parsedFields)) {
+          console.log("Fields changed, triggering auto-fill...");
+          debouncedAutoFill(result);
+        }
+      } catch (error) {
+        console.error("Extract error:", error);
+        toast.error(`Extraction failed: ${error.message}`);
+      } finally {
+        setLoadingExtract(false);
+      }
+    },
+    [autoFillEnabled, parsedFields, fieldsHaveChanged, debouncedAutoFill]
+  );
 
   // Manual fill PDF (existing functionality)
   const handleFillPdf = useCallback(async () => {
@@ -230,66 +247,82 @@ export default function App() {
     }
 
     // Check if we have any field data
-    const hasData = Object.entries(parsedFields).some(([key, value]) => 
-      key !== 'confidence' && value && value.trim()
+    const hasData = Object.entries(parsedFields).some(
+      ([key, value]) => key !== "confidence" && value && value.trim()
     );
 
     if (!hasData) {
-      toast.error('No field data to fill PDF with. Please extract some fields first.');
+      toast.error(
+        "No field data to fill PDF with. Please extract some fields first."
+      );
       return;
     }
 
     // Show warning for empty fields but allow proceed
     const emptyFields = Object.entries(parsedFields)
-      .filter(([key, value]) => key !== 'confidence' && (!value || !value.trim()))
+      .filter(
+        ([key, value]) => key !== "confidence" && (!value || !value.trim())
+      )
       .map(([key]) => key);
 
     if (emptyFields.length > 0) {
-      toast.warning(`Some fields are empty: ${emptyFields.join(', ')}. PDF will be filled with available data.`);
+      toast.warning(
+        `Some fields are empty: ${emptyFields.join(
+          ", "
+        )}. PDF will be filled with available data.`
+      );
     }
 
     setLoadingFill(true);
     try {
-      const response = await fetch('/api/fill-pdf', {
-        method: 'POST',
+      const response = await fetch("/api/fill-pdf", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           data: {
-            address: parsedFields.address || '',
-            buyer: parsedFields.buyer || '',
-            seller: parsedFields.seller || '',
-            date: parsedFields.date || ''
-          }
-        })
+            address: parsedFields.address || "",
+            buyer: parsedFields.buyer || "",
+            seller: parsedFields.seller || "",
+            date: parsedFields.date || "",
+          },
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fill PDF');
+        throw new Error(errorData.error || "Failed to fill PDF");
       }
 
       // Get the PDF blob
       const blob = await response.blob();
-      setPdfBlob(blob);
+
+      // Ensure the blob has the correct MIME type
+      const pdfBlob = new Blob([blob], { type: "application/pdf" });
+
+      setPdfBlob(pdfBlob);
       setIsShowingTemplate(false);
-      
+
       // Track fields filled count from API response header or compute from data
       const fieldData = {
-        address: parsedFields.address || '',
-        buyer: parsedFields.buyer || '',
-        seller: parsedFields.seller || '',
-        date: parsedFields.date || ''
+        address: parsedFields.address || "",
+        buyer: parsedFields.buyer || "",
+        seller: parsedFields.seller || "",
+        date: parsedFields.date || "",
       };
-      const fieldsCount = parseInt(response.headers.get('x-fields-filled')) || countFilledFields(fieldData);
+      const fieldsCount =
+        parseInt(response.headers.get("x-fields-filled")) ||
+        countFilledFields(fieldData);
       setFieldsFilledCount(fieldsCount);
-      
-      const fieldsCountText = response.headers.get('x-fields-filled') || fieldsCount;
-      toast.success(`PDF filled successfully! ${fieldsCountText} fields populated.`);
-      
+
+      const fieldsCountText =
+        response.headers.get("x-fields-filled") || fieldsCount;
+      toast.success(
+        `PDF filled successfully! ${fieldsCountText} fields populated.`
+      );
     } catch (error) {
-      console.error('Fill PDF error:', error);
+      console.error("Fill PDF error:", error);
       toast.error(`PDF filling failed: ${error.message}`);
     } finally {
       setLoadingFill(false);
@@ -299,24 +332,24 @@ export default function App() {
   // Download the current PDF (unchanged)
   const handleDownloadPdf = useCallback(() => {
     if (!pdfBlob) {
-      toast.error('No PDF available to download. Please fill the PDF first.');
+      toast.error("No PDF available to download. Please fill the PDF first.");
       return;
     }
 
     try {
       const url = window.URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = 'filled_document.pdf';
+      link.download = "filled_document.pdf";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
-      toast.success('PDF downloaded successfully!');
+
+      toast.success("PDF downloaded successfully!");
     } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download PDF');
+      console.error("Download error:", error);
+      toast.error("Failed to download PDF");
     }
   }, [pdfBlob]);
 
@@ -334,20 +367,20 @@ export default function App() {
       autoFillTimeoutRef.current = null;
     }
 
-    setInstructionText('');
+    setInstructionText("");
     const emptyFields = {
-      address: '',
-      buyer: '',
-      seller: '',
-      date: '',
-      confidence: 0.0
+      address: "",
+      buyer: "",
+      seller: "",
+      date: "",
+      confidence: 0.0,
     };
     setParsedFields(emptyFields);
     setPreviousParsedFields(emptyFields);
     setPdfBlob(null);
     setFieldsFilledCount(null);
     setIsShowingTemplate(true);
-    toast.info('Reset complete');
+    toast.info("Reset complete");
   }, []);
 
   // Reset to template handler
@@ -365,56 +398,72 @@ export default function App() {
     }
 
     // Clear form data
-    setInstructionText('');
+    setInstructionText("");
     const emptyFields = {
-      address: '',
-      buyer: '',
-      seller: '',
-      date: '',
-      confidence: 0.0
+      address: "",
+      buyer: "",
+      seller: "",
+      date: "",
+      confidence: 0.0,
     };
     setParsedFields(emptyFields);
     setPreviousParsedFields(emptyFields);
-    setPdfBlob(null); // Clear filled PDF
+    setPdfBlob(null); // Clear filled PDF - this will trigger template loading in PdfViewer
     setFieldsFilledCount(null);
     setIsShowingTemplate(true);
 
-    // Load template PDF
-    if (loadTemplateFunctionRef.current) {
-      try {
-        await loadTemplateFunctionRef.current();
-        toast.success('Reset to template complete');
-      } catch (error) {
-        console.error('Failed to load template:', error);
-        toast.error('Failed to load template PDF');
-      }
-    } else {
-      toast.warning('Template loading not available');
-    }
+    toast.success("Reset to template complete");
   }, []);
 
-  // Callback to receive template loading function from PdfViewer
-  const handleLoadTemplateCallback = useCallback((loadTemplateFunction) => {
-    loadTemplateFunctionRef.current = loadTemplateFunction;
-  }, []);
+  // Template loading is now handled automatically by PdfViewer
 
   // Update individual parsed fields (unchanged)
-  const updateParsedField = useCallback((fieldName, value) => {
-    setParsedFields(prev => {
-      const updated = {
-        ...prev,
-        [fieldName]: value
-      };
-      
-      // Trigger auto-fill if enabled and we're not currently loading
-      if (autoFillEnabled && !loadingExtract && !loadingFill && fieldsHaveChanged(updated, prev)) {
-        console.log('Field manually updated, triggering auto-fill...');
-        debouncedAutoFill(updated);
-      }
-      
-      return updated;
-    });
-  }, [autoFillEnabled, loadingExtract, loadingFill, fieldsHaveChanged, debouncedAutoFill]);
+  const updateParsedField = useCallback(
+    (fieldName, value) => {
+      setParsedFields((prev) => {
+        const updated = {
+          ...prev,
+          [fieldName]: value,
+        };
+
+        // Trigger auto-fill if enabled and we're not currently loading
+        if (
+          autoFillEnabled &&
+          !loadingExtract &&
+          !loadingFill &&
+          fieldsHaveChanged(updated, prev)
+        ) {
+          console.log("Field manually updated, triggering auto-fill...");
+          debouncedAutoFill(updated);
+        }
+
+        return updated;
+      });
+    },
+    [
+      autoFillEnabled,
+      loadingExtract,
+      loadingFill,
+      fieldsHaveChanged,
+      debouncedAutoFill,
+    ]
+  );
+
+  // History re-apply function
+  const handleReapplyHistory = useCallback(
+    (text) => {
+      setInstructionText(text);
+      handleExtract(text);
+    },
+    [handleExtract]
+  );
+
+  // History clear function
+  const handleClearHistory = useCallback(() => {
+    clearHistory();
+    setHistory([]);
+    toast.success("History cleared");
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -438,7 +487,8 @@ export default function App() {
               PDF Form Filler
             </h1>
             <p className="text-blue-100 text-lg max-w-2xl mx-auto">
-              Transform natural language instructions into filled PDF forms with AI-powered extraction
+              Transform natural language instructions into filled PDF forms with
+              AI-powered extraction
             </p>
           </div>
         </div>
@@ -455,27 +505,40 @@ export default function App() {
               onExtract={handleExtract}
               loading={loadingExtract}
             />
-            
+
+            <HistoryList
+              items={history}
+              onReapply={handleReapplyHistory}
+              onClear={handleClearHistory}
+            />
+
             <AutoFillToggle
               enabled={autoFillEnabled}
               onChange={setAutoFillEnabled}
               disabled={loadingExtract || loadingFill}
             />
-            
+
+            <ExtractionWarningBanner
+              hasEmptyFields={getExtractionHealth(parsedFields).hasEmptyFields}
+              isLowConfidence={
+                getExtractionHealth(parsedFields).isLowConfidence
+              }
+            />
+
             <ParsedFieldsCard
               fields={parsedFields}
               onFieldChange={updateParsedField}
               disabled={loadingExtract || loadingFill}
             />
-            
+
             <ActionsBar
               onFillPdf={handleFillPdf}
               onDownloadPdf={handleDownloadPdf}
               onReset={handleReset}
               onResetToTemplate={handleResetToTemplate}
               loadingFill={loadingFill}
-              hasFields={Object.entries(parsedFields).some(([key, value]) => 
-                key !== 'confidence' && value && value.trim()
+              hasFields={Object.entries(parsedFields).some(
+                ([key, value]) => key !== "confidence" && value && value.trim()
               )}
               hasPdf={!!pdfBlob}
             />
@@ -483,16 +546,12 @@ export default function App() {
 
           {/* Right Pane - PDF Viewer */}
           <div className="lg:col-span-3">
-            <FieldsFilledBadge 
+            <FieldsFilledBadge
               fieldsCount={fieldsFilledCount}
               isTemplate={isShowingTemplate}
               isVisible={fieldsFilledCount !== null}
             />
-            <PdfViewer
-              pdfBlob={pdfBlob}
-              loading={loadingFill}
-              onLoadTemplate={handleLoadTemplateCallback}
-            />
+            <PdfViewer pdfBlob={pdfBlob} loading={loadingFill} />
           </div>
         </div>
       </main>

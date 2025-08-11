@@ -1,13 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { FileText, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { FileText, Loader2, AlertCircle } from "lucide-react";
 
-export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
+export default function PdfViewer({ pdfBlob, loading }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [error, setError] = useState(null);
   const [isTemplate, setIsTemplate] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
 
   // Create object URL from blob with proper cleanup
   useEffect(() => {
@@ -17,28 +18,25 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
         if (pdfUrl) {
           window.URL.revokeObjectURL(pdfUrl);
         }
-        
-        // Create new URL with cache-busting query
+
+        // Create new URL without cache-busting (more stable for iframe)
         const url = window.URL.createObjectURL(pdfBlob);
-        const cacheBustedUrl = `${url}?t=${Date.now()}`;
-        setPdfUrl(cacheBustedUrl);
+        setPdfUrl(url);
         setError(null);
         setIsTemplate(false);
-        
-        console.log('PDF blob loaded, size:', pdfBlob.size, 'bytes');
-        
+
         // Cleanup function
         return () => {
           window.URL.revokeObjectURL(url);
         };
       } catch (err) {
-        console.error('Error creating PDF URL:', err);
-        setError('Failed to load PDF');
+        console.error("Error creating PDF URL:", err);
+        setError("Failed to load PDF");
       }
     } else {
       // Clear URL when no blob
       if (pdfUrl) {
-        window.URL.revokeObjectURL(pdfUrl.split('?')[0]); // Remove cache-busting query before revoking
+        window.URL.revokeObjectURL(pdfUrl);
       }
       setPdfUrl(null);
       setError(null);
@@ -49,50 +47,50 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
   // Load template PDF from API
   const loadTemplatePDF = useCallback(async () => {
     try {
-      console.log('Loading template PDF from /api/pdf');
       setError(null);
-      
-      const response = await fetch('/api/pdf', {
-        method: 'GET',
+      setTemplateLoading(true);
+
+      const response = await fetch("/api/pdf", {
+        method: "GET",
         headers: {
-          'Cache-Control': 'no-cache'
-        }
+          "Cache-Control": "no-cache",
+        },
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to load template PDF: ${response.status}`);
       }
-      
+
       const blob = await response.blob();
-      
+
       // Cleanup previous URL
       if (pdfUrl) {
-        window.URL.revokeObjectURL(pdfUrl.split('?')[0]);
+        window.URL.revokeObjectURL(pdfUrl);
       }
-      
-      // Create new URL with cache-busting
+
+      // Create new URL without cache-busting (more stable for iframe)
       const url = window.URL.createObjectURL(blob);
-      const cacheBustedUrl = `${url}?t=${Date.now()}`;
-      setPdfUrl(cacheBustedUrl);
+      setPdfUrl(url);
       setIsTemplate(true);
-      
-      const pdfSize = response.headers.get('x-pdf-size') || blob.size;
-      console.log(`Template PDF loaded: ${pdfSize} bytes`);
-      
+
+      const pdfSize = response.headers.get("x-pdf-size") || blob.size;
+      setTemplateLoading(false);
+
       return blob;
     } catch (err) {
-      console.error('Error loading template PDF:', err);
-      setError('Failed to load template PDF');
+      console.error("Error loading template PDF:", err);
+      setError("Failed to load template PDF");
+      setTemplateLoading(false);
       return null;
     }
-  }, [pdfUrl]);
+  }, []); // Remove pdfUrl dependency to prevent infinite re-renders
 
-  // Expose loadTemplatePDF to parent component via callback
+  // Load template PDF automatically on mount if no PDF blob is provided
   useEffect(() => {
-    if (onLoadTemplate && typeof onLoadTemplate === 'function') {
-      onLoadTemplate(loadTemplatePDF);
+    if (!pdfBlob && !pdfUrl) {
+      loadTemplatePDF();
     }
-  }, [loadTemplatePDF, onLoadTemplate]);
+  }, []); // Only run on mount
 
   return (
     <div className="glass-card rounded-2xl shadow-lg h-[600px] lg:h-[700px] overflow-hidden">
@@ -103,21 +101,27 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
         <div>
           <h2 className="text-xl font-semibold text-gray-800">PDF Preview</h2>
           {isTemplate && (
-            <p className="text-sm text-green-600 font-medium">Template • Ready to fill</p>
+            <p className="text-sm text-green-600 font-medium">
+              Template • Ready to fill
+            </p>
           )}
           {pdfUrl && !isTemplate && (
-            <p className="text-sm text-blue-600 font-medium">Filled • Ready to download</p>
+            <p className="text-sm text-blue-600 font-medium">
+              Filled • Ready to download
+            </p>
           )}
         </div>
       </div>
-      
+
       <div className="h-[calc(100%-88px)]">
-        {loading ? (
+        {loading || templateLoading ? (
           <div className="flex items-center justify-center h-full pdf-viewer-bg">
             <div className="text-center">
               <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-500" />
               <p className="text-gray-600 font-medium">Generating PDF...</p>
-              <p className="text-gray-400 text-sm mt-1">Please wait while we fill your form</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Please wait while we fill your form
+              </p>
             </div>
           </div>
         ) : error ? (
@@ -130,10 +134,10 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
           </div>
         ) : pdfUrl ? (
           <div className="h-full bg-gray-100">
-            <iframe
+            <embed
               src={pdfUrl}
+              type="application/pdf"
               className="w-full h-full border-0"
-              title="PDF Preview"
             />
           </div>
         ) : (
@@ -142,9 +146,12 @@ export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
               <div className="w-20 h-20 mx-auto mb-6 bg-white/80 rounded-2xl flex items-center justify-center shadow-lg">
                 <FileText className="h-10 w-10 text-gray-400" />
               </div>
-              <p className="text-gray-600 font-medium text-lg mb-2">No PDF Generated</p>
+              <p className="text-gray-600 font-medium text-lg mb-2">
+                No PDF Generated
+              </p>
               <p className="text-gray-400 text-sm max-w-xs mx-auto leading-relaxed">
-                Extract fields from your instructions and click "Fill PDF" to generate your completed form
+                Extract fields from your instructions and click "Fill PDF" to
+                generate your completed form
               </p>
             </div>
           </div>

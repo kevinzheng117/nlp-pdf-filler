@@ -3,7 +3,7 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "NODE_OPTIONS='--max-old-space-size=512' next dev --hostname 0.0.0.0 --port 3000",
+        "dev": "cross-env NODE_OPTIONS=--max-old-space-size=512 next dev --hostname 0.0.0.0 --port 3000",
         "dev:no-reload": "next dev --hostname 0.0.0.0 --port 3000",
         "dev:webpack": "next dev --hostname 0.0.0.0 --port 3000",
         "build": "next build",
@@ -40,6 +40,7 @@
         "@radix-ui/react-tooltip": "^1.2.7",
         "@tanstack/react-table": "^8.21.3",
         "axios": "^1.10.0",
+        "chrono-node": "^2.7.7",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
@@ -49,6 +50,8 @@
         "lucide-react": "^0.516.0",
         "next": "14.2.3",
         "next-themes": "^0.4.6",
+        "pdf-lib": "^1.17.1",
+        "pdf2pic": "^2.1.4",
         "react": "^18",
         "react-day-picker": "^9.7.0",
         "react-dom": "^18",
@@ -60,13 +63,11 @@
         "tailwindcss-animate": "^1.0.7",
         "uuid": "^9.0.1",
         "vaul": "^1.1.2",
-        "zod": "^3.25.67",
-        "pdf-lib": "^1.17.1",
-        "pdf2pic": "^2.1.4",
-        "chrono-node": "^2.7.7"
+        "zod": "^3.25.67"
     },
     "devDependencies": {
         "autoprefixer": "^10.4.19",
+        "cross-env": "^10.0.0",
         "globals": "^16.2.0",
         "postcss": "^8",
         "tailwindcss": "^3.4.1"
