@@ -229,13 +229,6 @@ X-PDF-Type: template
 
 ## ⚙️ Configuration
 
-### PDF Template Requirements
-Your PDF template must contain AcroForm fields with these exact names:
-- `propertyAddress` - Property address field
-- `buyer` - Buyer name field  
-- `seller` - Seller name field
-- `date` - Transaction date field
-
 ### Field Mapping
 The application maps extracted fields to PDF form fields as follows:
 ```javascript
@@ -247,10 +240,10 @@ The application maps extracted fields to PDF form fields as follows:
 }
 ```
 
-### LLM Configuration
-The app uses a rules-first approach with LLM fallback:
+### Extraction Configuration
+The app uses a rules-first approach with optional LLM fallback:
 1. **Primary**: Regex pattern matching (high accuracy, fast)
-2. **Fallback**: LLM extraction (handles edge cases)
+2. **Fallback**: LLM extraction (when LLM key is provided)
 3. **Confidence Scoring**: Combines both approaches for reliability
 
 ## 🚨 Known Limitations
