@@ -10,17 +10,18 @@ let templateETag = null;
 function loadTemplatePDF() {
   if (!templatePdfCache) {
     try {
-      const pdfPath = path.join(process.cwd(), 'VM_Takehome_Document.pdf');
+      // Load from public/pdf directory (bundled with repo)
+      const pdfPath = path.join(process.cwd(), 'public/pdf/VM_Takehome_Document.pdf');
       templatePdfCache = fs.readFileSync(pdfPath);
       
       // Generate ETag based on file content
       const hash = crypto.createHash('md5').update(templatePdfCache).digest('hex');
       templateETag = `"${hash}"`;
       
-      console.log(`Template PDF loaded: ${templatePdfCache.length} bytes, ETag: ${templateETag}`);
+      console.log(`Template PDF loaded from bundle: ${templatePdfCache.length} bytes, ETag: ${templateETag}`);
     } catch (error) {
-      console.error('Error loading template PDF:', error);
-      throw new Error('Template PDF not found');
+      console.error('Error loading bundled template PDF:', error);
+      throw new Error('Template PDF not found in bundle');
     }
   }
   return { data: templatePdfCache, etag: templateETag };
