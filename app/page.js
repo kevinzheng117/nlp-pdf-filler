@@ -7,6 +7,7 @@ import ParsedFieldsCard from '../components/ParsedFieldsCard';
 import ActionsBar from '../components/ActionsBar';
 import PdfViewer from '../components/PdfViewer';
 import AutoFillToggle from '../components/AutoFillToggle';
+import FieldsFilledBadge from '../components/FieldsFilledBadge';
 
 export default function App() {
   // State management
