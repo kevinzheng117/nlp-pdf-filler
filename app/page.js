@@ -160,22 +160,26 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-blue-400 via-purple-500 to-purple-600">
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold text-foreground">PDF Form Filler</h1>
-          <p className="text-muted-foreground mt-2">
-            Enter natural language instructions to extract and fill PDF form fields
-          </p>
+      <header className="py-8">
+        <div className="container mx-auto px-6">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
+              PDF Form Filler
+            </h1>
+            <p className="text-blue-100 text-lg max-w-2xl mx-auto">
+              Transform natural language instructions into filled PDF forms with AI-powered extraction
+            </p>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-2 gap-8 h-[calc(100vh-12rem)]">
+      <main className="container mx-auto px-6 pb-8">
+        <div className="grid lg:grid-cols-5 gap-8 max-w-7xl mx-auto">
           {/* Left Pane - Input and Fields */}
-          <div className="space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <InstructionInput
               value={instructionText}
               onChange={setInstructionText}
@@ -202,7 +206,7 @@ export default function App() {
           </div>
 
           {/* Right Pane - PDF Viewer */}
-          <div className="lg:sticky lg:top-8">
+          <div className="lg:col-span-3">
             <PdfViewer
               pdfBlob={pdfBlob}
               loading={loadingFill}
