@@ -437,6 +437,7 @@ export default function App() {
               onFillPdf={handleFillPdf}
               onDownloadPdf={handleDownloadPdf}
               onReset={handleReset}
+              onResetToTemplate={handleResetToTemplate}
               loadingFill={loadingFill}
               hasFields={Object.entries(parsedFields).some(([key, value]) => 
                 key !== 'confidence' && value && value.trim()
@@ -450,6 +451,7 @@ export default function App() {
             <PdfViewer
               pdfBlob={pdfBlob}
               loading={loadingFill}
+              onLoadTemplate={handleLoadTemplateCallback}
             />
           </div>
         </div>
