@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { FileText, Loader2, AlertCircle } from 'lucide-react';
 
-export default function PdfViewer({ pdfBlob, loading }) {
+export default function PdfViewer({ pdfBlob, loading, onLoadTemplate }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [error, setError] = useState(null);
   const [isTemplate, setIsTemplate] = useState(false);
