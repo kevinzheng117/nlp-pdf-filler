@@ -32,21 +32,22 @@ export default function ParsedFieldsCard({ fields, onFieldChange, disabled }) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Edit3 className="h-5 w-5" />
-            Extracted Fields
+    <div className="glass-card rounded-2xl p-6 shadow-lg">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+            <Edit3 className="h-4 w-4 text-white" />
           </div>
-          {fields.confidence > 0 && (
-            <Badge className={getConfidenceColor(fields.confidence)}>
-              {Math.round(fields.confidence * 100)}% confidence
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-800">Extracted Fields</h2>
+        </div>
+        {fields.confidence > 0 && (
+          <Badge className={`${getConfidenceColor(fields.confidence)} px-3 py-1 text-sm font-medium`}>
+            {Math.round(fields.confidence * 100)}% confidence
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-5">
         {Object.entries(fields).map(([key, value]) => {
           if (key === 'confidence') return null;
           
@@ -55,11 +56,11 @@ export default function ParsedFieldsCard({ fields, onFieldChange, disabled }) {
           
           return (
             <div key={key} className="space-y-2">
-              <Label htmlFor={key} className="flex items-center gap-2">
-                {Icon && <Icon className="h-4 w-4" />}
+              <Label htmlFor={key} className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                {Icon && <Icon className="h-4 w-4 text-gray-500" />}
                 {formatFieldName(key)}
                 {!hasValue && (
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-orange-50 text-orange-600 border-orange-200">
                     Empty
                   </Badge>
                 )}
@@ -71,20 +72,24 @@ export default function ParsedFieldsCard({ fields, onFieldChange, disabled }) {
                 onChange={(e) => onFieldChange(key, e.target.value)}
                 placeholder={`Enter ${formatFieldName(key).toLowerCase()}...`}
                 disabled={disabled}
-                className={!hasValue ? 'border-orange-200 bg-orange-50' : ''}
+                className={`h-11 rounded-xl bg-white/80 backdrop-blur-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200 ${
+                  !hasValue ? 'border-orange-300 bg-orange-50/50' : ''
+                }`}
               />
             </div>
           );
         })}
         
         {fields.confidence === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Edit3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No fields extracted yet</p>
-            <p className="text-sm">Enter instructions above and click "Extract Fields"</p>
+          <div className="text-center py-12 text-gray-500">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <Edit3 className="h-8 w-8 text-gray-300" />
+            </div>
+            <p className="font-medium text-gray-600 mb-1">No fields extracted yet</p>
+            <p className="text-sm text-gray-400">Enter instructions above and click "Extract Fields"</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
