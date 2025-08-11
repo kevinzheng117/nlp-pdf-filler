@@ -38,6 +38,12 @@ export default function App() {
   const autoFillTimeoutRef = useRef(null);
   const loadTemplateFunctionRef = useRef(null);
 
+  // Helper function to count non-empty fields
+  const countFilledFields = useCallback((data) => {
+    const fields = ['address', 'buyer', 'seller', 'date'];
+    return fields.filter(field => data[field] && data[field].trim()).length;
+  }, []);
+
   // Load template PDF on initial mount (if no filled PDF exists)
   useEffect(() => {
     const loadInitialTemplate = async () => {
