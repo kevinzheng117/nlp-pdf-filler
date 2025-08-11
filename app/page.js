@@ -120,9 +120,20 @@ export default function App() {
       // Get the PDF blob
       const blob = await response.blob();
       setPdfBlob(blob);
+      setIsShowingTemplate(false);
       
-      const fieldsCount = response.headers.get('x-fields-filled');
-      toast.success(`PDF auto-filled! ${fieldsCount} fields populated.`);
+      // Track fields filled count from API response header or compute from data
+      const fieldsCount = parseInt(response.headers.get('x-fields-filled')) || 
+                         countFilledFields({
+                           address: fields.address || '',
+                           buyer: fields.buyer || '',
+                           seller: fields.seller || '',
+                           date: fields.date || ''
+                         });
+      setFieldsFilledCount(fieldsCount);
+      
+      const fieldsCountText = response.headers.get('x-fields-filled') || fieldsCount;
+      toast.success(`PDF auto-filled! ${fieldsCountText} fields populated.`);
       
     } catch (error) {
       if (error.name === 'AbortError') {
