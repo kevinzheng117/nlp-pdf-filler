@@ -32,43 +32,53 @@ export default function InstructionInput({ value, onChange, onExtract, loading }
   }, [handleExtract]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
+    <div className="glass-card rounded-2xl p-6 shadow-lg">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2 flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <FileText className="h-4 w-4 text-white" />
+          </div>
           Natural Language Instructions
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
+        </h2>
+        <p className="text-gray-600 text-sm">
+          Describe your property transaction in plain English
+        </p>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="space-y-3">
           <Textarea
-            placeholder="Enter your instructions here, e.g., 'The property at 123 Main St was sold by John Doe to Jane Smith on June 15, 2025.'"
+            placeholder="Example: The property at 123 Main St was sold by John Doe to Jane Smith on June 15, 2025."
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyPress}
-            className="min-h-[120px] resize-none"
+            className="min-h-[140px] resize-none border-gray-200 bg-white/80 backdrop-blur-sm rounded-xl text-gray-700 placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
             disabled={loading}
           />
-          <p className="text-sm text-muted-foreground">
-            Tip: Press Ctrl+Enter to extract fields quickly
+          <p className="text-xs text-gray-500 flex items-center gap-2">
+            <span className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center text-blue-600 text-[10px] font-medium">⌘</span>
+            Press Ctrl+Enter to extract fields quickly
           </p>
         </div>
         
         <Button 
           onClick={handleExtract}
           disabled={loading || !value.trim()}
-          className="w-full"
+          className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Extracting Fields...
             </>
           ) : (
-            'Extract Fields'
+            <>
+              <FileText className="mr-2 h-5 w-5" />
+              Extract Fields
+            </>
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
