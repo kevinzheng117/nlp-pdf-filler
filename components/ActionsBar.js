@@ -53,6 +53,16 @@ export default function ActionsBar({
           <RotateCcw className="mr-2 h-4 w-4" />
           Reset
         </Button>
+
+        <Button
+          onClick={onResetToTemplate}
+          disabled={loadingFill}
+          variant="outline"
+          className="min-w-[140px] h-12 bg-white/80 backdrop-blur-sm border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-xl shadow-lg hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FileX className="mr-2 h-4 w-4" />
+          Reset to Template
+        </Button>
       </div>
       
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
