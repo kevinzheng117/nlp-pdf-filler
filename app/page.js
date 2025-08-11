@@ -376,6 +376,8 @@ export default function App() {
     setParsedFields(emptyFields);
     setPreviousParsedFields(emptyFields);
     setPdfBlob(null); // Clear filled PDF
+    setFieldsFilledCount(null);
+    setIsShowingTemplate(true);
 
     // Load template PDF
     if (loadTemplateFunctionRef.current) {
