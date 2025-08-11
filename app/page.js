@@ -360,6 +360,12 @@ export default function App() {
               loading={loadingExtract}
             />
             
+            <AutoFillToggle
+              enabled={autoFillEnabled}
+              onChange={setAutoFillEnabled}
+              disabled={loadingExtract || loadingFill}
+            />
+            
             <ParsedFieldsCard
               fields={parsedFields}
               onFieldChange={updateParsedField}
