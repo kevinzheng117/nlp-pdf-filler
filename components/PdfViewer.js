@@ -31,19 +31,21 @@ export default function PdfViewer({ pdfBlob, loading }) {
   }, [pdfBlob]);
 
   return (
-    <Card className="h-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          PDF Preview
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0 h-[calc(100%-80px)]">
+    <div className="glass-card rounded-2xl shadow-lg h-[600px] lg:h-[700px] overflow-hidden">
+      <div className="flex items-center gap-3 p-6 border-b border-gray-200/50">
+        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+          <FileText className="h-4 w-4 text-white" />
+        </div>
+        <h2 className="text-xl font-semibold text-gray-800">PDF Preview</h2>
+      </div>
+      
+      <div className="h-[calc(100%-88px)]">
         {loading ? (
-          <div className="flex items-center justify-center h-full bg-muted/30">
+          <div className="flex items-center justify-center h-full pdf-viewer-bg">
             <div className="text-center">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">Generating PDF...</p>
+              <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-500" />
+              <p className="text-gray-600 font-medium">Generating PDF...</p>
+              <p className="text-gray-400 text-sm mt-1">Please wait while we fill your form</p>
             </div>
           </div>
         ) : error ? (
@@ -55,25 +57,27 @@ export default function PdfViewer({ pdfBlob, loading }) {
             </div>
           </div>
         ) : pdfUrl ? (
-          <div className="h-full">
+          <div className="h-full bg-gray-100">
             <iframe
               src={pdfUrl}
-              className="w-full h-full border-0 rounded-b-lg"
+              className="w-full h-full border-0"
               title="PDF Preview"
             />
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full bg-muted/30">
+          <div className="flex items-center justify-center h-full pdf-viewer-bg">
             <div className="text-center">
-              <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="text-muted-foreground font-medium">No PDF Generated</p>
-              <p className="text-muted-foreground/80 text-sm mt-1">
-                Extract fields and click "Fill PDF" to generate
+              <div className="w-20 h-20 mx-auto mb-6 bg-white/80 rounded-2xl flex items-center justify-center shadow-lg">
+                <FileText className="h-10 w-10 text-gray-400" />
+              </div>
+              <p className="text-gray-600 font-medium text-lg mb-2">No PDF Generated</p>
+              <p className="text-gray-400 text-sm max-w-xs mx-auto leading-relaxed">
+                Extract fields from your instructions and click "Fill PDF" to generate your completed form
               </p>
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
